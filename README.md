@@ -75,7 +75,7 @@ If you want to swap in a different aspect ratio of screenshot, update the `aspec
 
 ## Changing the contact email
 
-The email address `hello@formastudio.co.uk` appears in a few places — update all of them:
+The email address `hello@formastudio.uk` appears in a few places — update all of them:
 
 - `index.html`: mobile menu footer, final CTA section, footer
 - `privacy.html` and `terms.html`: contact sections
@@ -83,36 +83,32 @@ The email address `hello@formastudio.co.uk` appears in a few places — update a
 
 ## Configuring the contact form
 
-The form (`#contact-form` in `index.html`) currently submits via a **mailto link**, built in `scripts/main.js`:
+The form (`#contact-form` in `index.html`) submits directly (no email app popup) via [FormSubmit.co](https://formsubmit.co), a form-relay service that needs no account signup. Configured in `scripts/main.js`:
 
 ```js
 // scripts/main.js
-const DESTINATION_EMAIL = "rynkiewicz.olivier@gmail.com";
+const DESTINATION_EMAIL = "hello@formastudio.uk";
+const FORM_ENDPOINT = `https://formsubmit.co/ajax/${DESTINATION_EMAIL}`;
 ```
 
-On submit, this opens the visitor's own email app with the message pre-filled and addressed to `DESTINATION_EMAIL`, and they hit send from there. It needs no backend, no account, and no API key — it works the moment the site is opened anywhere, including locally. The trade-off: it relies on the visitor having an email client configured, and it isn't a silent/automatic submission — they still have to click send in their own mail app.
+**One-time activation step:** the first submission FormSubmit receives for a given destination address doesn't get delivered — instead it sends a confirmation email to that address with an activation link. Someone with access to that inbox needs to click it once. After that, every future submission is delivered automatically and silently (no email app, no redirect). If you change `DESTINATION_EMAIL`, you'll need to repeat this activation step for the new address.
 
-To swap in a fully automatic, silent submission instead:
+**Changing to a different provider:**
 
-**Formspree**
+**Formspree** (adds a submissions dashboard, spam filtering)
 1. Create a form at [formspree.io](https://formspree.io) and copy your endpoint URL.
-2. In `scripts/main.js`, replace the `window.location.href = buildMailto();` line with a `fetch(endpoint, { method: "POST", headers: { Accept: "application/json" }, body: new FormData(form) })` call, keeping the existing validation/honeypot logic above it.
+2. Replace `FORM_ENDPOINT` in `scripts/main.js` with that URL, and change the `fetch` body from `JSON.stringify(buildPayload())` to `new FormData(form)` (drop the `Content-Type` header so the browser sets the correct multipart one).
 
-**Netlify Forms**
+**Netlify Forms** (only if deployed on Netlify)
 1. Add `data-netlify="true"` and a hidden `form-name` input to the `<form>` in `index.html`.
-2. Let Netlify's build-time form detection handle submission instead of intercepting it in JS, or `fetch("/", { method: "POST", headers: {"Content-Type": "application/x-www-form-urlencoded"}, body: new URLSearchParams(new FormData(form)).toString() })`.
-
-**Another provider**
-Point a `fetch` call at your provider's endpoint in `scripts/main.js`, in place of the mailto line.
-
-If you switch to any of these, reintroduce a loading state on submit (disable the button, show a brief in-progress message) since — unlike mailto — a real network request takes time and can fail.
+2. Point `FORM_ENDPOINT` at `/` and send `body: new URLSearchParams(new FormData(form)).toString()` with `Content-Type: application/x-www-form-urlencoded`, or let Netlify's build-time form detection handle it natively instead of intercepting in JS.
 
 The form already includes:
-- A hidden honeypot field (`_gotcha`) as a basic spam trap
+- A hidden honeypot field (`_gotcha`) as a basic spam trap, checked client-side before any request is sent
 - Client-side validation with accessible, per-field error messages
-- A styled success/error status message surfaced via `[data-form-status]`
+- Loading, success and error states surfaced via `[data-form-status]`
 
-No credentials or API keys are stored in this codebase.
+No credentials or API keys are stored in this codebase — only a public destination email address.
 
 ## Deployment
 

@@ -156,52 +156,46 @@
   const form = document.querySelector("[data-contact-form]");
   if (!form) return;
 
-  // Where enquiries are delivered. This opens the visitor's own email
-  // app with the message pre-filled (mailto) — no backend or
-  // third-party account required, so it works the moment the site is
-  // deployed anywhere (or opened locally).
-  //
-  // For a fully automatic, silent submission (no email app popup on
-  // the visitor's side), replace this with a real form-handling
-  // service instead — see README.md for Formspree / Netlify Forms
-  // setup steps.
-  const DESTINATION_EMAIL = "rynkiewicz.olivier@gmail.com";
+  // Where enquiries are delivered. Submissions are sent directly (no
+  // email app popup) via FormSubmit.co, a form-relay service that
+  // needs no account signup — just a one-time confirmation click from
+  // this inbox the first time it receives a submission. See README.md
+  // for the activation step and how to swap in a different provider
+  // (e.g. Formspree) later if you want a submissions dashboard.
+  const DESTINATION_EMAIL = "hello@formastudio.uk";
+  const FORM_ENDPOINT = `https://formsubmit.co/ajax/${DESTINATION_EMAIL}`;
 
   const statusEl = form.querySelector("[data-form-status]");
   const submitBtn = form.querySelector("[data-form-submit]");
 
   const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="8 12.5 10.5 15 16 9"></polyline></svg>';
   const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="7.5" x2="12" y2="13"></line><line x1="12" y1="16.3" x2="12" y2="16.4"></line></svg>';
+  const ICON_SPINNER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity="0.25"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg>';
 
   function setStatus(state, message) {
     if (!statusEl) return;
     statusEl.dataset.state = state;
-    const icon = state === "error" ? ICON_ALERT : state === "success" ? ICON_CHECK : "";
+    const icon = state === "error" ? ICON_ALERT : state === "success" ? ICON_CHECK : state === "loading" ? ICON_SPINNER : "";
     statusEl.innerHTML = `${icon}<span>${message}</span>`;
   }
 
-  function buildMailto() {
+  function buildPayload() {
     const data = new FormData(form);
     const get = (key) => (data.get(key) || "").toString().trim();
 
-    const lines = [
-      `Name: ${get("name")}`,
-      `Business name: ${get("business")}`,
-      `Email: ${get("email")}`,
-      `Current website: ${get("current_url") || "—"}`,
-      "",
-      "What does your business do?",
-      get("business_description"),
-      "",
-      "What would you like help with?",
-      get("help_needed"),
-      "",
-      `Estimated budget: ${get("budget") || "Not specified"}`,
-      `Preferred launch timeframe: ${get("timeframe") || "Not specified"}`,
-    ];
-
-    const subject = `New project enquiry — ${get("business") || get("name")}`;
-    return `mailto:${DESTINATION_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
+    return {
+      name: get("name"),
+      business: get("business"),
+      email: get("email"),
+      current_url: get("current_url") || "—",
+      business_description: get("business_description"),
+      help_needed: get("help_needed"),
+      budget: get("budget") || "Not specified",
+      timeframe: get("timeframe") || "Not specified",
+      _subject: `New project enquiry — ${get("business") || get("name")}`,
+      _template: "table",
+      _captcha: "false",
+    };
   }
 
   const requiredFields = Array.from(form.querySelectorAll("[required]"));
@@ -250,7 +244,7 @@
     field.addEventListener("blur", () => validateField(field));
   });
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     // Honeypot: if this hidden field has a value, silently drop the
@@ -273,16 +267,38 @@
       return;
     }
 
-    // Opens the visitor's email app with the message pre-filled, addressed
-    // to DESTINATION_EMAIL above. This is instant and needs no network
-    // request, so there's no loading state to show here.
-    window.location.href = buildMailto();
+    submitBtn && submitBtn.setAttribute("disabled", "true");
+    setStatus("loading", "Sending your message…");
 
-    setStatus(
-      "success",
-      "Your email app should now open with this message ready to send — just hit send there to reach FORMA. If nothing opened, email hello@formastudio.co.uk directly."
-    );
-    form.reset();
+    try {
+      const response = await fetch(FORM_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(buildPayload()),
+      });
+
+      // FormSubmit returns HTTP 200 even when it hasn't actually delivered
+      // the message (e.g. the destination address still needs its one-time
+      // activation click) — the real result is in the JSON body, not the
+      // status code, so both have to be checked.
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result || result.success === "false" || result.success === false) {
+        throw new Error((result && result.message) || "Form submission failed");
+      }
+
+      form.reset();
+      setStatus("success", "Thank you — your message has been sent. I'll be in touch soon.");
+    } catch (err) {
+      setStatus(
+        "error",
+        `Something went wrong sending your message. Please try again, or email ${DESTINATION_EMAIL} directly.`
+      );
+    } finally {
+      submitBtn && submitBtn.removeAttribute("disabled");
+    }
   });
 })();
 
