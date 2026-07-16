@@ -51,6 +51,10 @@ const FAQS = [
   const list = document.querySelector("[data-faq-list]");
   if (!list) return;
 
+  // Drives the two-column layout at desktop widths (styles/responsive.css)
+  // so items split evenly into two columns regardless of how many there are.
+  list.style.setProperty("--faq-rows", String(Math.ceil(FAQS.length / 2)));
+
   list.innerHTML = FAQS.map((item, i) => {
     const qid = `faq-q-${i}`;
     const pid = `faq-p-${i}`;

@@ -317,6 +317,16 @@
     padding-bottom: 0;
   }
 
+  /* FAQ: two columns, flowing top-to-bottom then across */
+  .faq-list {
+    max-width: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(var(--faq-rows, 5), auto);
+    grid-auto-flow: column;
+    column-gap: 4rem;
+  }
+
   /* Final CTA split */
   .cta-grid {
     flex-direction: row;

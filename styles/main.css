@@ -483,6 +483,12 @@ body.menu-open {
   overflow: hidden;
   border-radius: calc(var(--radius-md) - 4px);
   background: #0c0c0c;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.hero-plate__inner:active {
+  cursor: grabbing;
 }
 
 .hero-plate__slide {
@@ -943,17 +949,25 @@ body.menu-open {
 }
 
 /* =========================================================
-   Working together
+   Working together (nested inside the Services section)
    ========================================================= */
 
-.together-section {
-  padding-block: var(--space-section);
+.together-divider {
+  margin-top: clamp(3.5rem, 8vw, 5rem);
+  padding-top: clamp(3rem, 7vw, 4rem);
+  border-top: 1px solid var(--line-soft);
+}
+
+.together-heading {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 3.6vw, 2.8rem);
 }
 
 .together-grid {
   display: flex;
   flex-direction: column;
   gap: 3rem;
+  margin-top: 2.5rem;
 }
 
 .together-item {

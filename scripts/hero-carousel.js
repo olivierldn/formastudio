@@ -82,6 +82,10 @@
     goTo((current + 1) % SLIDES.length);
   }
 
+  function prev() {
+    goTo((current - 1 + SLIDES.length) % SLIDES.length);
+  }
+
   function start() {
     if (prefersReducedMotion || timer) return;
     timer = window.setInterval(() => {
@@ -107,6 +111,47 @@
   dotEls.forEach((dot, i) => {
     dot.addEventListener("click", () => goTo(i));
   });
+
+  // Swipe / drag to change slides, in addition to the dots.
+  (function setupSwipe() {
+    const SWIPE_THRESHOLD = 40;
+    let startX = 0;
+    let startY = 0;
+    let pointerId = null;
+    let isDragging = false;
+
+    function onPointerDown(e) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      isDragging = true;
+      isHovered = true; // reuse the existing hover-pause while the user is interacting
+    }
+
+    function onPointerUp(e) {
+      if (!isDragging || e.pointerId !== pointerId) return;
+      isDragging = false;
+      isHovered = false;
+
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) next(); else prev();
+      }
+    }
+
+    function onPointerCancel() {
+      isDragging = false;
+      isHovered = false;
+    }
+
+    screen.style.touchAction = "pan-y";
+    screen.addEventListener("pointerdown", onPointerDown);
+    screen.addEventListener("pointerup", onPointerUp);
+    screen.addEventListener("pointercancel", onPointerCancel);
+  })();
 
   if (!prefersReducedMotion) start();
 })();
