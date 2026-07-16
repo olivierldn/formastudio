@@ -22,6 +22,58 @@
   window.addEventListener("scroll", update, { passive: true });
 })();
 
+/* ---------- Fast smooth-scroll for in-page anchor links ---------- */
+
+(function smoothAnchorScroll() {
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const DURATION = 450; // ms — quick and deliberate rather than a slow drift
+
+  function easeOutQuart(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+
+  function scrollMarginTopOf(el) {
+    return parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+  }
+
+  function animateScrollTo(targetY) {
+    const startY = window.scrollY;
+    const distance = targetY - startY;
+
+    if (prefersReducedMotion || Math.abs(distance) < 1) {
+      window.scrollTo(0, targetY);
+      return;
+    }
+
+    const startTime = performance.now();
+
+    function step(now) {
+      const progress = Math.min((now - startTime) / DURATION, 1);
+      window.scrollTo(0, startY + distance * easeOutQuart(progress));
+      if (progress < 1) requestAnimationFrame(step);
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest('a[href^="#"]');
+    if (!link) return;
+
+    const hash = link.getAttribute("href");
+    if (!hash || hash === "#") return;
+
+    const target = document.querySelector(hash);
+    if (!target) return;
+
+    e.preventDefault();
+    const targetY = target.getBoundingClientRect().top + window.scrollY - scrollMarginTopOf(target);
+    animateScrollTo(Math.max(targetY, 0));
+
+    if (history.pushState) history.pushState(null, "", hash);
+  });
+})();
+
 /* ---------- Scroll reveal ---------- */
 
 (function scrollReveal() {

@@ -33,6 +33,12 @@ section {
   position: relative;
 }
 
+/* Keeps anchored sections clear of the fixed header when scrolled to. */
+section[id],
+#contact-form {
+  scroll-margin-top: 110px;
+}
+
 img {
   object-fit: cover;
 }
