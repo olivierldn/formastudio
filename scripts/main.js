@@ -27,13 +27,22 @@
 (function smoothAnchorScroll() {
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const DURATION = 450; // ms — quick and deliberate rather than a slow drift
+  const HEADER_OFFSET = 110; // clears the fixed header with a little breathing room
 
   function easeOutQuart(t) {
     return 1 - Math.pow(1 - t, 4);
   }
 
-  function scrollMarginTopOf(el) {
-    return parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+  // Full <section> elements have a lot of their own top padding (part of
+  // the page's general vertical rhythm), which would otherwise leave a
+  // big empty gap between the header and the section's actual heading
+  // when jumped to directly. Scroll to the section's inner .container
+  // instead, so we land right at the content rather than the padding.
+  function resolveScrollTarget(el) {
+    if (el.tagName === "SECTION") {
+      return el.querySelector(".container") || el;
+    }
+    return el;
   }
 
   function animateScrollTo(targetY) {
@@ -67,7 +76,8 @@
     if (!target) return;
 
     e.preventDefault();
-    const targetY = target.getBoundingClientRect().top + window.scrollY - scrollMarginTopOf(target);
+    const scrollTarget = resolveScrollTarget(target);
+    const targetY = scrollTarget.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
     animateScrollTo(Math.max(targetY, 0));
 
     if (history.pushState) history.pushState(null, "", hash);
